@@ -1,0 +1,21 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+
+# Project-internal files not needed in the submission repo
+src/
+CLAUDE_1.md
+ML_Assignment_2.pdf
+data/raw_dataset.csv
