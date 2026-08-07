@@ -22,6 +22,7 @@ def normalize_col(col_name: str) -> str:
 st.set_page_config(page_title="StudentLens", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""<style>
+.block-container { padding-top: 1rem !important; }
 section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
     border: 2px solid #0d7377 !important;
     border-radius: 8px !important;
