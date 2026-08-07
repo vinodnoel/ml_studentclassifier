@@ -70,6 +70,6 @@
     "Curricular units 2nd sem (without evaluations)"
   ],
   "sklearn_version": "1.9.0",
-  "n_train": 3539,
-  "n_test": 885
+  "n_train": 3318,
+  "n_test": 1106
 }

@@ -537,11 +537,11 @@ else:
         from sklearn.linear_model import LogisticRegression
         from sklearn.tree import DecisionTreeClassifier
         from sklearn.neighbors import KNeighborsClassifier
-        from sklearn.naive_bayes import GaussianNB
+        from sklearn.naive_bayes import BernoulliNB
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.metrics import confusion_matrix, classification_report
 
-        _MODEL_NAMES = ['Logistic Regression', 'Decision Tree', 'K-Nearest Neighbors', 'Gaussian Naive Bayes', 'Random Forest']
+        _MODEL_NAMES = ['Logistic Regression', 'Decision Tree', 'K-Nearest Neighbors', 'Bernoulli Naive Bayes', 'Random Forest']
 
         if not has_target:
             st.info('Upload a dataset with the target column to enable training.')
@@ -565,7 +565,7 @@ else:
             elif model_choice == 'Random Forest':
                 hp['n_estimators'] = int(hp_col1.slider('Number of trees', 10, 500, 100, step=10, key='rf_trees'))
                 hp['max_depth'] = int(hp_col2.slider('Max depth', 1, 20, 10, key='rf_depth'))
-            # GaussianNB has no meaningful hyperparameters to expose
+            # BernoulliNB has no meaningful hyperparameters to expose
 
             if st.button('Train model', key='train_btn'):
                 with st.spinner('Training…'):
@@ -586,8 +586,8 @@ else:
                             est = DecisionTreeClassifier(max_depth=hp['max_depth'], min_samples_leaf=hp['min_samples_leaf'], random_state=42)
                         elif model_choice == 'K-Nearest Neighbors':
                             est = KNeighborsClassifier(n_neighbors=hp['n_neighbors'])
-                        elif model_choice == 'Gaussian Naive Bayes':
-                            est = GaussianNB()
+                        elif model_choice == 'Bernoulli Naive Bayes':
+                            est = BernoulliNB()
                         else:
                             est = RandomForestClassifier(n_estimators=hp['n_estimators'], max_depth=hp['max_depth'], random_state=42, n_jobs=-1)
 
@@ -710,7 +710,7 @@ else:
         from sklearn.linear_model import LogisticRegression as _LR
         from sklearn.tree import DecisionTreeClassifier as _DT
         from sklearn.neighbors import KNeighborsClassifier as _KNN
-        from sklearn.naive_bayes import GaussianNB as _GNB
+        from sklearn.naive_bayes import BernoulliNB as _BNB
         from sklearn.ensemble import RandomForestClassifier as _RF
 
         st.write('Train all five models with their **default** hyperparameters on the same split, and compare.')
@@ -730,7 +730,7 @@ else:
                     'Logistic Regression': _LR(max_iter=2000, random_state=42),
                     'Decision Tree':       _DT(max_depth=8, min_samples_leaf=10, random_state=42),
                     'K-Nearest Neighbors': _KNN(n_neighbors=15),
-                    'Gaussian Naive Bayes':_GNB(),
+                    'Bernoulli Naive Bayes':_BNB(),
                     'Random Forest':       _RF(n_estimators=300, min_samples_leaf=2, random_state=42, n_jobs=-1),
                 }
                 _X = df[raw_feature_columns].copy()

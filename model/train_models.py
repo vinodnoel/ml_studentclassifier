@@ -17,7 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import BernoulliNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, roc_auc_score
@@ -58,7 +58,7 @@ print('numeric count', len(NUMERIC_COLS), 'nominal count', len(NOMINAL_COLS))
 # split
 X = df[FEATURE_COLUMNS].copy()
 y = df['Target'].copy()
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=RANDOM_STATE)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, stratify=y, random_state=RANDOM_STATE)
 # export raw test set including Target
 test_df = pd.concat([X_test.reset_index(drop=True), y_test.reset_index(drop=True)], axis=1)
 test_df.to_csv(ROOT / 'test_data.csv', index=False)
@@ -86,7 +86,7 @@ models = {
     'logistic_regression': LogisticRegression(max_iter=2000, random_state=RANDOM_STATE),
     'decision_tree': DecisionTreeClassifier(max_depth=8, min_samples_leaf=10, random_state=RANDOM_STATE),
     'knn': KNeighborsClassifier(n_neighbors=15),
-    'naive_bayes': GaussianNB(),
+    'naive_bayes': BernoulliNB(),
     'random_forest': RandomForestClassifier(n_estimators=300, min_samples_leaf=2, random_state=RANDOM_STATE, n_jobs=-1),
 }
 
