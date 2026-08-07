@@ -106,6 +106,7 @@ _key_to_display = {v: k for k, v in model_map.items()}
 selected_model_key = st.session_state.get('diag_model_select') or (sorted(models.keys())[0] if models else None)
 selected_display = _key_to_display.get(selected_model_key, selected_model_key)
 
+st.sidebar.image(str(ROOT / 'assets' / 'bits_logo.png'), width=120)
 st.sidebar.markdown('---')
 st.sidebar.markdown('**🚀 What can you do here?**')
 st.sidebar.markdown(
