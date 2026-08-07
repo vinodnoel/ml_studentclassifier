@@ -520,7 +520,9 @@ else:
                             est = RandomForestClassifier(n_estimators=hp['n_estimators'], max_depth=hp['max_depth'], random_state=42, n_jobs=-1)
 
                         clf_demo = SKPipeline([('pre', pre), ('est', est)])
-                        X_tr2, X_te2, y_tr2, y_te2 = train_test_split(X_tr, y_tr, test_size=0.2, random_state=42, stratify=y_tr)
+                        _min_cls = y_tr.value_counts().min()
+                        _strat = y_tr if _min_cls >= 2 else None
+                        X_tr2, X_te2, y_tr2, y_te2 = train_test_split(X_tr, y_tr, test_size=0.2, random_state=42, stratify=_strat)
                         clf_demo.fit(X_tr2, y_tr2)
                         y_p2 = clf_demo.predict(X_te2)
                         try:
@@ -661,7 +663,9 @@ else:
                 }
                 _X = df[raw_feature_columns].copy()
                 _y = df[target_col]
-                _Xtr, _Xte, _ytr, _yte = _tts(_X, _y, test_size=0.2, random_state=42, stratify=_y)
+                _min_class = _y.value_counts().min()
+                _stratify = _y if _min_class >= 2 else None
+                _Xtr, _Xte, _ytr, _yte = _tts(_X, _y, test_size=0.2, random_state=42, stratify=_stratify)
                 _compare_rows = []
                 _progress = st.progress(0, text='Training models…')
                 for _idx, (_name, _est) in enumerate(_estimators.items()):
@@ -829,7 +833,7 @@ else:
             st.session_state['predict_sample_idx'] = int(np.random.randint(0, len(df)))
 
         if True:
-            _idx = st.session_state['predict_sample_idx']
+            _idx = st.session_state['predict_sample_idx'] % len(df)
             _sample_row = df.iloc[[_idx]]
             _sample_X = _sample_row[raw_feature_columns]
 
