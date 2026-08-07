@@ -21,6 +21,7 @@ def normalize_col(col_name: str) -> str:
 
 st.set_page_config(page_title="StudentLens", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
 
+
 @st.cache_resource
 def load_models():
     models = {}
@@ -106,7 +107,9 @@ _key_to_display = {v: k for k, v in model_map.items()}
 selected_model_key = st.session_state.get('diag_model_select') or (sorted(models.keys())[0] if models else None)
 selected_display = _key_to_display.get(selected_model_key, selected_model_key)
 
-st.sidebar.image(str(ROOT / 'assets' / 'bits_logo.png'), width=120)
+import base64
+_logo_b64 = base64.b64encode((ROOT / 'assets' / 'bits_logo.png').read_bytes()).decode()
+st.sidebar.markdown(f'<img src="data:image/png;base64,{_logo_b64}" style="width:240px;height:240px;object-fit:contain;">', unsafe_allow_html=True)
 st.sidebar.markdown('---')
 st.sidebar.markdown('**🚀 What can you do here?**')
 st.sidebar.markdown(
