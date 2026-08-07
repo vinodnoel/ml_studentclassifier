@@ -15,9 +15,9 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, roc_auc_score
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent.parent
 MODEL_DIR = ROOT / 'model'
-DATA_PATH = ROOT / 'data' / 'students' / 'data.csv'
+DATA_PATH = ROOT / 'test_data.csv'
 
 schema = json.loads((MODEL_DIR / 'schema.json').read_text(encoding='utf8'))
 target_col = schema['target_column']

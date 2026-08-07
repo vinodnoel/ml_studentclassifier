@@ -26,13 +26,13 @@ import joblib
 RANDOM_STATE = 42
 ROOT = Path(__file__).parent.parent
 RAW = ROOT / 'data' / 'raw_dataset.csv'
-# If raw_dataset.csv missing, fall back to data/students/data.csv
+# If raw_dataset.csv missing, fall back to test_data.csv
 if not RAW.exists():
-    fallback = ROOT / 'data' / 'students' / 'data.csv'
+    fallback = ROOT / 'test_data.csv'
     if fallback.exists():
         RAW = fallback
     else:
-        raise SystemExit('No dataset found at data/raw_dataset.csv or data/students/data.csv')
+        raise SystemExit('No dataset found at data/raw_dataset.csv or test_data.csv')
 
 print('Using dataset:', RAW)
 

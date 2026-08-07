@@ -14,12 +14,24 @@ import streamlit as st
 
 ROOT = Path(__file__).parent
 MODEL_DIR = ROOT / 'model'
-DEFAULT_TEST_DATA = ROOT / 'data' / 'students' / 'data.csv'
+DEFAULT_TEST_DATA = ROOT / 'test_data.csv'
 
 def normalize_col(col_name: str) -> str:
     return str(col_name).strip().replace('\ufeff', '').replace('\t', ' ').strip()
 
 st.set_page_config(page_title="StudentLens", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
+
+st.markdown("""<style>
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+    border: 2px solid #0d7377 !important;
+    border-radius: 8px !important;
+    background: rgba(13,115,119,0.08) !important;
+}
+section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzoneInstructions"] span {
+    color: #0d7377 !important;
+    font-weight: 600 !important;
+}
+</style>""", unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -114,7 +126,36 @@ selected_display = _key_to_display.get(selected_model_key, selected_model_key)
 
 import base64
 _logo_b64 = base64.b64encode((ROOT / 'assets' / 'bits_logo.png').read_bytes()).decode()
-st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{_logo_b64}" style="width:240px;height:240px;object-fit:contain;"><br><strong style="font-size:2em;">Birla Institute of Technology and Science, Pilani</strong></div>', unsafe_allow_html=True)
+st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{_logo_b64}" style="width:168px;object-fit:contain;"><br><strong style="font-size:2em;">Birla Institute of Technology and Science, Pilani</strong></div>', unsafe_allow_html=True)
+st.sidebar.markdown('---')
+st.sidebar.markdown('**📂 Data Source**')
+_data_source = st.sidebar.radio(
+    'data_source_radio',
+    options=['Preloaded Data', 'Upload Own'],
+    horizontal=True,
+    label_visibility='collapsed',
+    key='data_source',
+)
+if _data_source == 'Upload Own':
+    uploaded = st.sidebar.file_uploader('Choose a CSV file', type=['csv'], label_visibility='collapsed')
+    if uploaded is not None:
+        st.sidebar.success(f'✅ {uploaded.name}')
+    else:
+        st.sidebar.caption('No file uploaded yet — drop a CSV above.')
+    _sample_path = ROOT / 'data' / 'data.csv'
+    if _sample_path.exists():
+        st.sidebar.download_button(
+            label='⬇️ Template & Sample File',
+            data=_sample_path.read_bytes(),
+            file_name='sample_data.csv',
+            mime='text/csv',
+            use_container_width=True,
+        )
+else:
+    uploaded = None
+    if DEFAULT_TEST_DATA.exists():
+        st.sidebar.caption('ℹ️ Using preloaded data · 4,424 rows · 3 classes')
+
 st.sidebar.markdown('---')
 st.sidebar.markdown('**🚀 What can you do here?**')
 st.sidebar.markdown(
@@ -126,10 +167,13 @@ st.sidebar.markdown(
 - 🎯 **Predict** — Predict an outcome
 """
 )
-st.sidebar.markdown('---')
-st.sidebar.markdown('**Created by:** Joseph M Vinod Noel  \n**BITS ID:** 2025AC05003')
 _mypic_b64 = base64.b64encode((ROOT / 'assets' / 'mypic.png').read_bytes()).decode()
-st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{_mypic_b64}" style="width:40%;object-fit:contain;"></div>', unsafe_allow_html=True)
+st.markdown(f'''
+<div style="position:fixed;top:60px;right:24px;z-index:9999;text-align:center;background:var(--background-color);padding:11px 15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+    <img src="data:image/png;base64,{_mypic_b64}" style="width:85px;height:85px;object-fit:cover;border-radius:50%;display:block;margin:0 auto 6px auto;">
+    <div style="font-size:0.86em;font-weight:600;line-height:1.4;">Joseph M Vinod Noel<br><span style="font-weight:400;">BITS ID: 2025AC05003</span></div>
+</div>
+''', unsafe_allow_html=True)
 
 st.markdown('# StudentLens')
 st.markdown(
@@ -139,15 +183,43 @@ st.markdown(
 
 tabs = st.tabs(['Dataset', 'Train a Model', 'Compare Models', 'Model Report', 'Predict', 'Upload Data'])
 
-# Upload Data tab
+# Upload Data tab — status + column reference
 with tabs[5]:
-    st.markdown('### Upload Data')
-    st.markdown(
-        'Upload a CSV file with student data to analyse and predict outcomes. '
-        'The file must contain the columns listed below.'
-    )
-    uploaded = st.file_uploader('Choose a CSV file', type=['csv'], label_visibility='collapsed')
-
+    st.markdown('### Data Status')
+    if _data_source == 'Preloaded Data':
+        st.success('✅ Using preloaded dataset · 4,424 rows · 3 classes (Graduate, Dropout, Enrolled)')
+    elif uploaded is not None:
+        try:
+            _status_df = parse_upload(uploaded)
+            uploaded.seek(0)
+            _has_target = schema.get('target_column', 'Target') in _status_df.columns
+            _norm = lambda c: str(c).strip().replace('﻿', '').replace('\t', ' ').strip()
+            _norm_uploaded = set(_norm(c) for c in _status_df.columns)
+            _norm_required = set(_norm(c) for c in schema.get('feature_columns', []))
+            _missing = _norm_required - _norm_uploaded
+            if _missing:
+                st.error(f'❌ **{uploaded.name}** is missing {len(_missing)} required column(s): {sorted(_missing)}')
+            else:
+                _classes_info = f' · Classes: {", ".join(_status_df[schema.get("target_column","Target")].unique())}' if _has_target else ' · No Target column (predictions only)'
+                st.success(f'✅ **{uploaded.name}** loaded · {len(_status_df):,} rows{_classes_info}')
+        except Exception as _status_err:
+            st.error(f'❌ Failed to parse **{uploaded.name}**: {_status_err}')
+    else:
+        st.warning('⚠️ No file uploaded. Select **Upload Own** in the sidebar and choose a CSV file.')
+    st.markdown('---')
+    st.markdown('### Sample File')
+    st.markdown('Download this sample CSV, inspect the format, and upload it via the **Data Source** toggle in the sidebar.')
+    _sample_path = ROOT / 'data' / 'data.csv'
+    if _sample_path.exists():
+        st.download_button(
+            label='⬇️ Download sample_data.csv',
+            data=_sample_path.read_bytes(),
+            file_name='sample_data.csv',
+            mime='text/csv',
+        )
+    st.markdown('---')
+    st.markdown('### Column Reference')
+    st.markdown('Use the **Data Source** toggle in the sidebar to upload your own CSV. The file must contain the columns listed below.')
     st.markdown('#### Required columns')
     _col_info = [
         ('Marital status', 'Integer code — 1=Single, 2=Married, 3=Widower, 4=Divorced, 5=Facto union, 6=Legally separated'),
@@ -193,8 +265,6 @@ with tabs[5]:
         use_container_width=True,
         hide_index=True,
     )
-    if uploaded is None and DEFAULT_TEST_DATA.exists():
-        st.info('No file uploaded — using the preloaded test_data.csv (885 rows).')
 
 if uploaded is not None:
     try:
