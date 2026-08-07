@@ -100,6 +100,11 @@ models = load_models()
 metrics_ref = load_metrics()
 schema = load_schema()
 
+if 'train_results' not in st.session_state:
+    _pretrained_path = MODEL_DIR / 'pretrained_lr_results.pkl'
+    if _pretrained_path.exists():
+        st.session_state['train_results'] = joblib.load(_pretrained_path)
+
 model_names = [metrics_ref[k]['display_name'] if k in metrics_ref else k for k in sorted(models.keys())]
 model_map = {metrics_ref[k]['display_name'] if k in metrics_ref else k: k for k in sorted(models.keys())}
 _key_to_display = {v: k for k, v in model_map.items()}
@@ -109,7 +114,7 @@ selected_display = _key_to_display.get(selected_model_key, selected_model_key)
 
 import base64
 _logo_b64 = base64.b64encode((ROOT / 'assets' / 'bits_logo.png').read_bytes()).decode()
-st.sidebar.markdown(f'<img src="data:image/png;base64,{_logo_b64}" style="width:240px;height:240px;object-fit:contain;">', unsafe_allow_html=True)
+st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{_logo_b64}" style="width:240px;height:240px;object-fit:contain;"><br><strong style="font-size:2em;">Birla Institute of Technology and Science, Pilani</strong></div>', unsafe_allow_html=True)
 st.sidebar.markdown('---')
 st.sidebar.markdown('**🚀 What can you do here?**')
 st.sidebar.markdown(
@@ -123,6 +128,8 @@ st.sidebar.markdown(
 )
 st.sidebar.markdown('---')
 st.sidebar.markdown('**Created by:** Joseph M Vinod Noel  \n**BITS ID:** 2025AC05003')
+_mypic_b64 = base64.b64encode((ROOT / 'assets' / 'mypic.png').read_bytes()).decode()
+st.sidebar.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{_mypic_b64}" style="width:40%;object-fit:contain;"></div>', unsafe_allow_html=True)
 
 st.markdown('# StudentLens')
 st.markdown(
@@ -733,12 +740,14 @@ else:
         from sklearn.metrics import confusion_matrix, classification_report, roc_curve, auc as _auc_score
 
         # Model selector — stays in sync with sidebar via shared session state key
-        _diag_model_key = st.selectbox(
-            'Model',
-            options=list(model_map.values()),
-            format_func=lambda k: metrics_ref[k]['display_name'] if k in metrics_ref else k,
-            key='diag_model_select',
-        )
+        _sel_col, _ = st.columns([1, 3])
+        with _sel_col:
+            _diag_model_key = st.selectbox(
+                'Model',
+                options=list(model_map.values()),
+                format_func=lambda k: metrics_ref[k]['display_name'] if k in metrics_ref else k,
+                key='diag_model_select',
+            )
         _diag_pipe = models.get(_diag_model_key)
         _diag_display = metrics_ref[_diag_model_key]['display_name'] if _diag_model_key in metrics_ref else _diag_model_key
         st.caption(f'Showing diagnostics for: **{_diag_display}**')
@@ -766,28 +775,32 @@ else:
                 with _d_left:
                     st.markdown('**Confusion matrix**')
                     cm = confusion_matrix(y_true, _diag_pred, labels=_diag_classes)
-                    fig_d, ax_d = plt.subplots(figsize=(5, 4))
+                    fig_d, ax_d = plt.subplots(figsize=(2.5, 2))
                     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
                                 xticklabels=_diag_classes, yticklabels=_diag_classes, ax=ax_d)
                     ax_d.set_xlabel('Predicted')
                     ax_d.set_ylabel('Actual')
-                    st.pyplot(fig_d)
+                    st.pyplot(fig_d, use_container_width=False)
                     plt.close(fig_d)
 
                 with _d_right:
                     st.markdown('**Classification report**')
+                    st.markdown('<style>[data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th { font-size: 20px !important; }</style>', unsafe_allow_html=True)
                     cr = classification_report(y_true, _diag_pred, output_dict=True, zero_division=0)
                     cr_df = pd.DataFrame(cr).transpose()
-                    st.dataframe(
-                        cr_df.style.format('{:.3f}', subset=['precision','recall','f1-score'])
-                                   .format('{:.0f}', subset=['support']),
-                        use_container_width=True,
-                    )
+                    _cr_col, _ = st.columns([0.7, 0.3])
+                    with _cr_col:
+                        st.dataframe(
+                            cr_df.style.format('{:.3f}', subset=['precision','recall','f1-score'])
+                                       .format('{:.0f}', subset=['support']),
+                            use_container_width=True,
+                            height=300,
+                        )
 
                 if _diag_proba is not None:
                     st.markdown('**ROC curves (one-vs-rest)**')
                     try:
-                        fig_r, ax_r = plt.subplots(figsize=(7, 4))
+                        fig_r, ax_r = plt.subplots(figsize=(7, 2))
                         for i, cls in enumerate(_diag_classes):
                             fpr, tpr, _ = roc_curve((y_true == cls).astype(int), _diag_proba[:, i])
                             ax_r.plot(fpr, tpr, label=f'{cls} (AUC={_auc_score(fpr, tpr):.3f})')
@@ -795,7 +808,7 @@ else:
                         ax_r.set_xlabel('FPR')
                         ax_r.set_ylabel('TPR')
                         ax_r.legend()
-                        st.pyplot(fig_r)
+                        st.pyplot(fig_r, use_container_width=False)
                         plt.close(fig_r)
                     except Exception:
                         st.warning('ROC curves not available for this upload')
@@ -895,23 +908,21 @@ else:
 
             with _panel_right:
                 # --- 2. TOP-10 FEATURE VALUES ---
-                _FEAT_EMOJIS = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟']
-                st.markdown('#### 🔍 Feature values')
+                st.markdown('#### Feature values')
                 st.caption('Top 10 most important features for this sample.')
                 _cols_per_row = 2
                 for _row_start in range(0, len(_top10_feats), _cols_per_row):
                     _row_feats = _top10_feats[_row_start:_row_start + _cols_per_row]
                     _grid = st.columns(_cols_per_row)
                     for _gi, _feat in enumerate(_row_feats):
-                        _rank = _row_start + _gi
-                        _emoji = _FEAT_EMOJIS[_rank] if _rank < len(_FEAT_EMOJIS) else '▪️'
+                        _rank = _row_start + _gi + 1
                         _raw_val = _sample_row[_feat].iloc[0] if _feat in _sample_row.columns else 0.0
                         try:
                             _display_val = float(_raw_val)
                         except (TypeError, ValueError):
                             _display_val = 0.0
-                        _grid[_gi].markdown(f'{_emoji} **{_feat}**')
-                        _grid[_gi].code(f'{_display_val:.4f}')
+                        _grid[_gi].markdown(f'**{_rank}. {_feat}**')
+                        _grid[_gi].markdown(f'<p style="font-size:2em; font-weight:bold; color:#1c83e1;">{_display_val:.1f}</p>', unsafe_allow_html=True)
 
         st.markdown('---')
         buf = pred_df.to_csv(index=False).encode('utf8')
