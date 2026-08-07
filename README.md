@@ -19,6 +19,7 @@ Predicting whether a student will drop out, remain enrolled, or graduate is norm
 - **Split:** 80% train (3,539) / 20% test (885), stratified by class, with `random_state=42`.
 - **Preprocessing:** Median imputation + standard scaling for 12 continuous numeric features; mode imputation + one-hot encoding for 24 integer-coded nominal/categorical features.
 - **Class balance:** Moderately imbalanced — Graduate (49.9%) dominates; Enrolled (17.9%) is the smallest class and hardest to predict, which depresses macro-averaged recall across all models.
+- **Meets assignment minimums:** 36 features (≥ 12 required) and 4,424 instances (≥ 500 required).
 
 *Citation: Realinho, V., Vieira Martins, M., Machado, J., & Baptista, L. (2022). Predict Students' Dropout and Academic Success. UCI Machine Learning Repository. https://doi.org/10.24432/C5MC89*
 
@@ -26,7 +27,11 @@ Predicting whether a student will drop out, remain enrolled, or graduate is norm
 
 ## c. GitHub Repository Link
 
-[https://github.com/vinodnoel/student-classifier](https://github.com/vinodnoel/student-classifier)
+[https://github.com/vinodnoel/ml_studentclassifier](https://github.com/vinodnoel/ml_studentclassifier)
+
+## Live Streamlit App Link
+
+[https://studentclassifier-josephvinod-bits.streamlit.app/](https://studentclassifier-josephvinod-bits.streamlit.app/)
 
 ---
 
@@ -60,32 +65,31 @@ Five classic classification algorithms were trained on the same train/test split
 | Decision Tree | Second-lowest AUC (0.8248). The single tree's recursive splits can capture non-linear feature interactions (e.g. age × scholarship status), but depth-capping at `max_depth=8` to prevent overfitting leaves some boundary complexity unexplored. Without ensemble averaging, predictions near split thresholds are noisy, resulting in a meaningful accuracy gap (0.7469) vs. Logistic Regression — despite both models sharing identical preprocessing. |
 | K-Nearest Neighbors | Weakest accuracy (0.6960) and F1 (0.5938). One-hot encoding the 24 nominal columns inflates the feature space, diluting Euclidean distances between samples — the classic curse of dimensionality for kNN. The Enrolled minority class suffers most, pulling macro recall down to 0.5850. With `k=15`, the model is also forced to average across many potentially dissimilar neighbours in this high-dimensional space. |
 | Naive Bayes | Catastrophic accuracy (0.2203) and F1 (0.1727): the model collapses nearly all predictions onto a single class. The Gaussian independence assumption is violated on two fronts — the 1st and 2nd semester curricular-unit columns (credited, enrolled, approved, grade) are highly collinear, and the Gaussian distribution is inappropriate for the many binary indicator features (gender, scholarship, debtor, tuition fees). The relatively strong AUC (0.7125) shows the probability ranking still carries some signal, but the hard-threshold predictions are unreliable. |
-| Random Forest (Ensemble) | Highest AUC (0.8861) — the best probability ranker of the five, which matters most in an early-warning context where ranking at-risk students is more useful than a hard label. Averaging across 300 trees eliminates the single Decision Tree's split-boundary noise, and random feature subsampling at each node handles the collinear semester columns better than a single greedy split. Trades interpretability for marginally superior discrimination. |
-| Overall Winner for your dataset? | **Random Forest** — its AUC of 0.8861 is the highest of all five models, making it the most reliable ranker for identifying students at risk of dropping out. In a real deployment, probability scores (not just predicted labels) drive intervention priority lists, so AUC is the operationally relevant metric. Logistic Regression is the practical runner-up if a human-interpretable model is required, as it trails Random Forest by only 0.0013 in AUC while offering direct coefficient-level explanations. |
+| Random Forest (Ensemble) | Highest AUC (0.8861), but only by a 0.0013 margin over Logistic Regression — essentially a tie in ranking quality. Averaging across 300 trees eliminates the single Decision Tree's split-boundary noise, and random feature subsampling at each node handles the collinear semester columns better than a single greedy split. However, it trails Logistic Regression on accuracy (0.7548 vs 0.7627), recall, F1 (0.6558 vs 0.6910), and MCC (0.5917 vs 0.6073), so the AUC edge does not translate into better hard classifications. |
+| Overall Winner for your dataset? | **Logistic Regression** — it leads on 4 of 6 metrics (accuracy, recall, F1, and MCC), including MCC (0.6073 vs 0.5917), the metric most robust to class imbalance and generally recommended for multi-class problems like this one. Random Forest's only advantage is AUC, and by a negligible 0.0013 margin, so it does not outweigh Logistic Regression's clearer lead in actual classification performance. Random Forest remains the better choice specifically if the deployment goal is ranking students by risk probability (e.g. a triage/priority list) rather than producing hard labels, since AUC measures ranking quality independent of a decision threshold. |
 
 ---
 
 ## Project Structure
 
 ```
-bits-ml-assignment-2/
-├── app.py                        # Streamlit app (entry point)
+ml_studentclassifier/
+├── app.py                       
 ├── requirements.txt
 ├── README.md
-├── test_data.csv                 # Held-out test split (raw features + Target column)
-├── data/
-│   └── students/data.csv        # UCI Student Dropout dataset (semicolon-delimited)
+├── test_data.csv                
+├── data
 ├── model/
-│   ├── train_models.ipynb        # Training notebook — run once on BITS Virtual Lab
-│   ├── logistic_regression.pkl   # Serialized sklearn Pipeline
+│   ├── train_models.ipynb        
+│   ├── logistic_regression.pkl  
 │   ├── decision_tree.pkl
 │   ├── knn.pkl
 │   ├── naive_bayes.pkl
 │   ├── random_forest.pkl
-│   ├── metrics.json              # Pre-computed evaluation metrics for all 5 models
-│   └── schema.json               # Feature schema (column names, nominal columns, class labels)
+│   ├── metrics.json             
+│   └── schema.json               
 └── .streamlit/
-    └── config.toml               # Custom theme
+    └── config.toml
 ```
 
 ---
@@ -105,8 +109,8 @@ The app has five tabs:
 ## How to Run Locally
 
 ```bash
-git clone https://github.com/vinodnoel/student-classifier.git
-cd bits-ml-assignment-2
+git clone https://github.com/vinodnoel/ml_studentclassifier.git
+cd ml_studentclassifier
 python -m venv .venv
 # Windows:
 .venv\Scripts\activate
@@ -118,18 +122,14 @@ Upload `test_data.csv` from the repository when prompted. The app opens at http:
 
 ---
 
-## Deploy to Streamlit Community Cloud (free)
+## Deployed on Streamlit Community Cloud
 
-1. Push this project to a public GitHub repository.
-2. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with your GitHub account.
-3. Click **New app**, then select:
-   - **Repository:** `Joseph-Vinod/bits-ml-assignment-2`
-   - **Branch:** `main`
-   - **Main file path:** `app.py`
-4. Click **Deploy**. Streamlit Cloud installs `requirements.txt` and starts the app automatically — first deploy takes a minute or two.
-5. Any future `git push` to `main` auto-redeploys the app.
+- **Repository:** `vinodnoel/ml_studentclassifier`
+- **Branch:** `main`
+- **Main file path:** `app.py`
+- **Live app:** [https://studentclassifier-josephvinod-bits.streamlit.app/](https://studentclassifier-josephvinod-bits.streamlit.app/)
 
-No paid tier or credit card is needed for a public app on Community Cloud.
+Any future `git push` to `main` auto-redeploys the app. No paid tier or credit card is needed for a public app on Community Cloud.
 
 ---
 
