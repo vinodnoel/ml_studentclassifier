@@ -46,7 +46,7 @@ def load_models():
         try:
             models[name] = joblib.load(p)
         except Exception as e:
-            st.warning(f'Failed to load {p.name}: {e}')
+            st.warning(f'Failed to load {p.name}: {e!r}')
     return models
 
 @st.cache_data
@@ -564,8 +564,9 @@ else:
             elif model_choice == 'K-Nearest Neighbors':
                 hp['n_neighbors'] = int(hp_col1.slider('Neighbours (k)', 1, 50, 15, key='knn_k'))
             elif model_choice == 'Random Forest':
-                hp['n_estimators'] = int(hp_col1.slider('Number of trees', 10, 500, 100, step=10, key='rf_trees'))
-                hp['max_depth'] = int(hp_col2.slider('Max depth', 1, 20, 10, key='rf_depth'))
+                hp['n_estimators'] = int(hp_col1.slider('Number of trees', 10, 200, 150, step=10, key='rf_trees'))
+                hp['max_depth'] = int(hp_col2.slider('Max depth', 1, 20, 12, key='rf_depth'))
+                hp['min_samples_leaf'] = int(hp_col1.slider('Min samples per leaf', 1, 50, 5, key='rf_leaf'))
             # GaussianNB: var_smoothing fixed at 1e-2, not exposed
 
             if st.button('Train model', key='train_btn'):
@@ -590,7 +591,7 @@ else:
                         elif model_choice == 'Gaussian Naive Bayes':
                             est = GaussianNB(var_smoothing=1e-2)
                         else:
-                            est = RandomForestClassifier(n_estimators=hp['n_estimators'], max_depth=hp['max_depth'], random_state=42, n_jobs=-1)
+                            est = RandomForestClassifier(n_estimators=hp['n_estimators'], max_depth=hp['max_depth'], min_samples_leaf=hp['min_samples_leaf'], random_state=42, n_jobs=-1)
 
                         clf_demo = SKPipeline([('pre', pre), ('est', est)])
                         _min_cls = y_tr.value_counts().min()
@@ -732,7 +733,7 @@ else:
                     'Decision Tree':       _DT(max_depth=8, min_samples_leaf=10, random_state=42),
                     'K-Nearest Neighbors': _KNN(n_neighbors=15),
                     'Gaussian Naive Bayes': _GNB(var_smoothing=1e-2),
-                    'Random Forest':       _RF(n_estimators=300, min_samples_leaf=2, random_state=42, n_jobs=-1),
+                    'Random Forest':       _RF(n_estimators=150, max_depth=12, min_samples_leaf=5, random_state=42, n_jobs=-1),
                 }
                 _X = df[raw_feature_columns].copy()
                 _y = df[target_col]

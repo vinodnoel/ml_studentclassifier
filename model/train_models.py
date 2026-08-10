@@ -87,7 +87,7 @@ models = {
     'decision_tree': DecisionTreeClassifier(max_depth=8, min_samples_leaf=10, random_state=RANDOM_STATE),
     'knn': KNeighborsClassifier(n_neighbors=15),
     'naive_bayes': GaussianNB(var_smoothing=1e-2),
-    'random_forest': RandomForestClassifier(n_estimators=300, min_samples_leaf=2, random_state=RANDOM_STATE, n_jobs=-1),
+    'random_forest': RandomForestClassifier(n_estimators=150, max_depth=12, min_samples_leaf=5, random_state=RANDOM_STATE, n_jobs=-1),
 }
 
 out_model_dir = ROOT / 'model'
