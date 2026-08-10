@@ -19,7 +19,7 @@ DEFAULT_TEST_DATA = ROOT / 'test_data.csv'
 def normalize_col(col_name: str) -> str:
     return str(col_name).strip().replace('\ufeff', '').replace('\t', ' ').strip()
 
-st.set_page_config(page_title="StudentLens", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="StudentClassifier", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""<style>
 .block-container { padding-top: 1rem !important; }
@@ -41,6 +41,8 @@ def load_models():
     models = {}
     for p in MODEL_DIR.glob('*.pkl'):
         name = p.stem
+        if name == 'pretrained_lr_results':
+            continue
         try:
             models[name] = joblib.load(p)
         except Exception as e:
@@ -48,7 +50,7 @@ def load_models():
     return models
 
 @st.cache_data
-def load_metrics():
+def load_metrics(_mtime: float = 0):
     p = MODEL_DIR / 'metrics.json'
     if not p.exists():
         return {}
@@ -111,7 +113,8 @@ def compute_metrics(y_true, y_pred, y_proba, classes):
     return {'accuracy': acc, 'precision': prec, 'recall': rec, 'f1': f1, 'mcc': mcc, 'auc': auc}
 
 models = load_models()
-metrics_ref = load_metrics()
+_metrics_mtime = (MODEL_DIR / 'metrics.json').stat().st_mtime if (MODEL_DIR / 'metrics.json').exists() else 0
+metrics_ref = load_metrics(_metrics_mtime)
 schema = load_schema()
 
 if 'train_results' not in st.session_state:
@@ -144,7 +147,7 @@ if _data_source == 'Upload Own':
         st.sidebar.success(f'✅ {uploaded.name}')
     else:
         st.sidebar.caption('No file uploaded yet — drop a CSV above.')
-    _sample_path = ROOT / 'data' / 'data.csv'
+    _sample_path = ROOT / 'data' / 'sample_data_100rcrds.csv'
     if _sample_path.exists():
         st.sidebar.download_button(
             label='⬇️ Template & Sample File',
@@ -162,30 +165,28 @@ st.sidebar.markdown('---')
 st.sidebar.markdown('**🚀 What can you do here?**')
 st.sidebar.markdown(
     """
-- 📊 **Dataset** — Explore Student data
-- 🧠 **Train Model** — Build prediction model
-- ⚖️ **Compare Models** — Compare 5 algo
-- 📋 **Model Report** — View performance
-- 🎯 **Predict** — Predict an outcome
+- 📊 **Data Explorer** — Explore student data
+- 🧠 **Model Training** — Build a prediction model
+- ⚖️ **Model Comparison** — Compare 5 algorithms
+- 📋 **Diagnostics** — View model performance
+- 🎯 **Predict Outcome** — Predict an outcome
+- 📤 **Data Setup** — Upload data & column reference
 """
 )
 _mypic_b64 = base64.b64encode((ROOT / 'assets' / 'mypic.png').read_bytes()).decode()
 st.markdown(f'''
 <div style="position:fixed;top:60px;right:24px;z-index:9999;text-align:center;background:var(--background-color);padding:11px 15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.15);">
     <img src="data:image/png;base64,{_mypic_b64}" style="width:85px;height:85px;object-fit:cover;border-radius:50%;display:block;margin:0 auto 6px auto;">
-    <div style="font-size:0.86em;font-weight:600;line-height:1.4;">Joseph M Vinod Noel<br><span style="font-weight:400;">BITS ID: 2025AC05003</span></div>
+    <div style="font-size:0.86em;font-weight:600;line-height:1.4;text-align:center;">Joseph Mruthunjaya Vinod Noel<br><span style="font-weight:400;">BITS ID: 2025AC05003</span></div>
 </div>
 ''', unsafe_allow_html=True)
 
-st.markdown('# StudentLens')
-st.markdown(
-    'Explore how academic performance and student backgrounds influence enrolment outcomes. '
-    'Compare five machine learning models to predict completion, dropout, or continued enrolment.'
-)
+st.markdown('# StudentClassifier')
+st.markdown('Predict student outcomes using academic and demographic data — compare five ML models to identify dropout risk early.')
 
-tabs = st.tabs(['Dataset', 'Train a Model', 'Compare Models', 'Model Report', 'Predict', 'Upload Data'])
+tabs = st.tabs(['Data Explorer', 'Model Training', 'Model Comparison', 'Diagnostics', 'Predict Outcome', 'Data Setup'])
 
-# Upload Data tab — status + column reference
+# Data Setup tab — status + column reference
 with tabs[5]:
     st.markdown('### Data Status')
     if _data_source == 'Preloaded Data':
@@ -210,8 +211,8 @@ with tabs[5]:
         st.warning('⚠️ No file uploaded. Select **Upload Own** in the sidebar and choose a CSV file.')
     st.markdown('---')
     st.markdown('### Sample File')
-    st.markdown('Download this sample CSV, inspect the format, and upload it via the **Data Source** toggle in the sidebar.')
-    _sample_path = ROOT / 'data' / 'data.csv'
+    st.markdown('Download this sample CSV, inspect the format, and upload it via the **Data Source** toggle in the sidebar. You can also use the **Data Setup** tab to review the required column format.')
+    _sample_path = ROOT / 'data' / 'sample_data_100rcrds.csv'
     if _sample_path.exists():
         st.download_button(
             label='⬇️ Download sample_data.csv',
@@ -221,7 +222,7 @@ with tabs[5]:
         )
     st.markdown('---')
     st.markdown('### Column Reference')
-    st.markdown('Use the **Data Source** toggle in the sidebar to upload your own CSV. The file must contain the columns listed below.')
+    st.markdown('Use the **Data Source** toggle in the sidebar to upload your own CSV. The file must contain the columns listed below. Once uploaded, visit the **Data Explorer** tab to browse the data.')
     st.markdown('#### Required columns')
     _col_info = [
         ('Marital status', 'Integer code — 1=Single, 2=Married, 3=Widower, 4=Divorced, 5=Facto union, 6=Legally separated'),
@@ -331,7 +332,7 @@ has_target = target_col in df.columns
 preview_df = df.copy()
 preview_df.columns = [normalize_col(c) for c in preview_df.columns]
 with tabs[0]:
-    st.header('Data Profile')
+    st.header('Data Explorer')
     c1, c2, c3 = st.columns(3)
     c1.metric('Rows', preview_df.shape[0])
     c2.metric('Features', preview_df.shape[1])
@@ -525,7 +526,7 @@ else:
         pred_df[f'prob_{cls}'] = y_proba[:, i]
 
 
-    # Train a Model tab
+    # Model Training tab
     with tabs[1]:
         import matplotlib.pyplot as plt
         import seaborn as sns
@@ -537,11 +538,11 @@ else:
         from sklearn.linear_model import LogisticRegression
         from sklearn.tree import DecisionTreeClassifier
         from sklearn.neighbors import KNeighborsClassifier
-        from sklearn.naive_bayes import BernoulliNB
+        from sklearn.naive_bayes import GaussianNB
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.metrics import confusion_matrix, classification_report
 
-        _MODEL_NAMES = ['Logistic Regression', 'Decision Tree', 'K-Nearest Neighbors', 'Bernoulli Naive Bayes', 'Random Forest']
+        _MODEL_NAMES = ['Logistic Regression', 'Decision Tree', 'K-Nearest Neighbors', 'Gaussian Naive Bayes', 'Random Forest']
 
         if not has_target:
             st.info('Upload a dataset with the target column to enable training.')
@@ -565,7 +566,7 @@ else:
             elif model_choice == 'Random Forest':
                 hp['n_estimators'] = int(hp_col1.slider('Number of trees', 10, 500, 100, step=10, key='rf_trees'))
                 hp['max_depth'] = int(hp_col2.slider('Max depth', 1, 20, 10, key='rf_depth'))
-            # BernoulliNB has no meaningful hyperparameters to expose
+            # GaussianNB: var_smoothing fixed at 1e-2, not exposed
 
             if st.button('Train model', key='train_btn'):
                 with st.spinner('Training…'):
@@ -586,8 +587,8 @@ else:
                             est = DecisionTreeClassifier(max_depth=hp['max_depth'], min_samples_leaf=hp['min_samples_leaf'], random_state=42)
                         elif model_choice == 'K-Nearest Neighbors':
                             est = KNeighborsClassifier(n_neighbors=hp['n_neighbors'])
-                        elif model_choice == 'Bernoulli Naive Bayes':
-                            est = BernoulliNB()
+                        elif model_choice == 'Gaussian Naive Bayes':
+                            est = GaussianNB(var_smoothing=1e-2)
                         else:
                             est = RandomForestClassifier(n_estimators=hp['n_estimators'], max_depth=hp['max_depth'], random_state=42, n_jobs=-1)
 
@@ -699,7 +700,7 @@ else:
                     use_container_width=True,
                 )
 
-    # Compare Models tab
+    # Model Comparison tab
     with tabs[2]:
         import matplotlib.pyplot as plt
         from sklearn.model_selection import train_test_split as _tts
@@ -710,7 +711,7 @@ else:
         from sklearn.linear_model import LogisticRegression as _LR
         from sklearn.tree import DecisionTreeClassifier as _DT
         from sklearn.neighbors import KNeighborsClassifier as _KNN
-        from sklearn.naive_bayes import BernoulliNB as _BNB
+        from sklearn.naive_bayes import GaussianNB as _GNB
         from sklearn.ensemble import RandomForestClassifier as _RF
 
         st.write('Train all five models with their **default** hyperparameters on the same split, and compare.')
@@ -730,7 +731,7 @@ else:
                     'Logistic Regression': _LR(max_iter=2000, random_state=42),
                     'Decision Tree':       _DT(max_depth=8, min_samples_leaf=10, random_state=42),
                     'K-Nearest Neighbors': _KNN(n_neighbors=15),
-                    'Bernoulli Naive Bayes':_BNB(),
+                    'Gaussian Naive Bayes': _GNB(var_smoothing=1e-2),
                     'Random Forest':       _RF(n_estimators=300, min_samples_leaf=2, random_state=42, n_jobs=-1),
                 }
                 _X = df[raw_feature_columns].copy()
@@ -946,7 +947,7 @@ else:
 
             with _panel_left:
                 # --- 1. PREDICTION ---
-                st.markdown('#### 🎯 Prediction')
+                st.markdown('#### 🎯 Predict Outcome')
                 _p1, _p2 = st.columns(2)
                 with _p1:
                     st.caption('🤖 Predicted')

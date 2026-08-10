@@ -30,6 +30,13 @@ A full EDA notebook is available at [`model/eda_student_dropout.ipynb`](model/ed
 - **Graduate students dominate (~49%)** with Enrolled the smallest class (~18%), creating the moderate imbalance that suppresses macro-averaged recall across all models.
 - **Admission grade and 2nd-semester grade are the strongest numeric separators** — Graduate students score noticeably higher on both, explaining their prominence as top Logistic Regression features.
 - **Tuition fees up to date and scholarship status are the most discriminating categorical features** — students current on fees and scholarship holders have markedly higher Graduate proportions and lower Dropout rates.
+- **Exact class counts:** Dropout 1,421 (32.1%), Enrolled 794 (17.9%), Graduate 2,209 (49.9%).
+- **Column-typing audit confirms the preprocessing split is semantically correct**, not just dtype-based: 24 integer-coded columns with ≤30 unique values are genuine nominal categories (e.g. Course, Marital status), and the 12 remaining columns are truly continuous (grades, rates, GDP).
+- **Zero missing values and zero duplicate rows** in the raw dataframe — the pipeline's `SimpleImputer` never actually fires on this dataset and is retained purely as a safeguard for user-uploaded data in the Streamlit app.
+- **Numeric feature ranges span up to 43×** (e.g. GDP ≈ [-4, 3] vs. Father's occupation ≈ [0, 195]), confirming `StandardScaler` is necessary rather than optional for distance- and gradient-based models.
+- **IQR outlier audit flags two columns** for elevated outlier rates — Age at enrollment (10.0% of rows) and 1st-semester grade (16.4%) — both retained as domain-plausible (older re-entrant students, zero-grade non-completions) rather than data errors.
+- **Correlation heatmap shows admission grade, 1st-semester grade, and 2nd-semester grade are moderately positively correlated**, introducing mild multicollinearity that Logistic Regression handles via standardisation but that contributes to the single Decision Tree's instability.
+- A full **data dictionary** covering all 36 features + target (sourced from the UCI variable table, CC BY 4.0) is included in the notebook, since 24 of 36 features are integer-coded categoricals that are unreadable without a legend.
 
 ---
 
@@ -107,12 +114,12 @@ ml_studentclassifier/
 
 The app has the following sections:
 
-1. **📊 Dataset** — examine the dataset: class balance bar chart and per-feature distributions by class (bar charts with human-readable labels for categorical features; KDE plots for continuous features).
-2. **📤 Upload Own Data** — upload your own test dataset (CSV) to train, predict, and compare model performance on it.
-3. **🧠 Train Model** — select one of the five models, tune its hyperparameters, train on the uploaded data, and view all 6 evaluation metrics, a confusion matrix, classification report, and feature importance / coefficients.
-4. **📋 Model Report** — deep-dive diagnostics for any pre-trained model: confusion matrix heatmap, full classification report, and one-vs-rest ROC curves.
-5. **⚖️ Compare Models** — automatically trains all five models with default hyperparameters on the same split and displays a side-by-side metrics table (best value highlighted) and a metric bar chart.
-6. **🎯 Predict** — pick a random sample from the uploaded test data and see the model's predicted class, true label, and per-class probability breakdown.
+1. **📊 Data Explorer** — examine the dataset: class balance bar chart and per-feature distributions by class (bar charts with human-readable labels for categorical features; KDE plots for continuous features).
+2. **🧠 Model Training** — select one of the five models, tune its hyperparameters, train on the uploaded data, and view all 6 evaluation metrics, a confusion matrix, classification report, and feature importance / coefficients.
+3. **⚖️ Model Comparison** — automatically trains all five models with default hyperparameters on the same split and displays a side-by-side metrics table (best value highlighted) and a metric bar chart.
+4. **📋 Diagnostics** — deep-dive diagnostics for any pre-trained model: confusion matrix heatmap, full classification report, and one-vs-rest ROC curves.
+5. **🎯 Predict Outcome** — pick a random sample from the uploaded test data and see the model's predicted class, true label, and per-class probability breakdown.
+6. **📤 Data Setup** — upload your own test dataset (CSV), download the sample template, and review the required column reference.
 
 ---
 

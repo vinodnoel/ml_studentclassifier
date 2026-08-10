@@ -27,13 +27,13 @@
     "auc": 0.8202295188764005
   },
   "naive_bayes": {
-    "display_name": "Naive Bayes",
-    "accuracy": 0.6889692585895117,
-    "precision": 0.6499745797067679,
-    "recall": 0.6573278124308691,
-    "f1": 0.6489787028708509,
-    "mcc": 0.5105715185276083,
-    "auc": 0.8349285693874986
+    "display_name": "Gaussian Naive Bayes",
+    "accuracy": 0.6763110307414105,
+    "precision": 0.6503015400010984,
+    "recall": 0.655426756152676,
+    "f1": 0.6409437679959201,
+    "mcc": 0.5025137952557963,
+    "auc": 0.8340173597422362
   },
   "random_forest": {
     "display_name": "Random Forest",

@@ -17,7 +17,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 ROOT = Path(__file__).parent.parent
 MODEL_DIR = ROOT / 'model'
-DATA_PATH = ROOT / 'test_data.csv'
+# DATA_PATH = ROOT / 'test_data.csv'
+DATA_PATH = ROOT / 'data' / 'sample_data_100rcrds.csv'
 
 schema = json.loads((MODEL_DIR / 'schema.json').read_text(encoding='utf8'))
 target_col = schema['target_column']
@@ -76,4 +77,5 @@ results = {
 out_path = MODEL_DIR / 'pretrained_lr_results.pkl'
 joblib.dump(results, out_path)
 print(f"Saved to {out_path}")
-print(f"Accuracy: {acc*100:.3f}%  |  F1: {f1:.3f}  |  AUC: {auc:.3f if auc else 'n/a'}")
+auc_str = f"{auc:.3f}" if auc is not None else "n/a"
+print(f"Accuracy: {acc*100:.3f}%  |  F1: {f1:.3f}  |  AUC: {auc_str}")

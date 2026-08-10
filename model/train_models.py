@@ -17,7 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, roc_auc_score
@@ -25,14 +25,14 @@ import joblib
 
 RANDOM_STATE = 42
 ROOT = Path(__file__).parent.parent
-RAW = ROOT / 'data' / 'raw_dataset.csv'
-# If raw_dataset.csv missing, fall back to test_data.csv
+RAW = ROOT / 'data' / 'original_data.csv'
+# If original_data.csv missing, fall back to test_data.csv
 if not RAW.exists():
     fallback = ROOT / 'test_data.csv'
     if fallback.exists():
         RAW = fallback
     else:
-        raise SystemExit('No dataset found at data/raw_dataset.csv or test_data.csv')
+        raise SystemExit('No dataset found at data/original_data.csv or test_data.csv')
 
 print('Using dataset:', RAW)
 
@@ -86,7 +86,7 @@ models = {
     'logistic_regression': LogisticRegression(max_iter=2000, random_state=RANDOM_STATE),
     'decision_tree': DecisionTreeClassifier(max_depth=8, min_samples_leaf=10, random_state=RANDOM_STATE),
     'knn': KNeighborsClassifier(n_neighbors=15),
-    'naive_bayes': BernoulliNB(),
+    'naive_bayes': GaussianNB(var_smoothing=1e-2),
     'random_forest': RandomForestClassifier(n_estimators=300, min_samples_leaf=2, random_state=RANDOM_STATE, n_jobs=-1),
 }
 
@@ -118,7 +118,8 @@ for slug, clf in models.items():
         n_classes = len(pipe.classes_)
         y_proba = np.full((len(X_test), n_classes), 1.0 / n_classes)
     m = compute_metrics(y_test, y_pred, y_proba, classes=pipe.classes_)
-    metrics[slug] = {'display_name': slug.replace('_', ' ').title(), **m}
+    display_name_overrides = {'naive_bayes': 'Gaussian Naive Bayes'}
+    metrics[slug] = {'display_name': display_name_overrides.get(slug, slug.replace('_', ' ').title()), **m}
     joblib.dump(pipe, out_model_dir / f'{slug}.pkl')
     print('Saved', slug)
 
