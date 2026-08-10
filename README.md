@@ -1,6 +1,6 @@
 # Student Dropout & Academic Success Classification
 
-> **Created by Joseph Vinod · BITS ID: 2025AC05003**
+> **Created by Joseph Mruthunjaya Vinod Noel · BITS ID: 2025AC05003**
 
 ---
 
@@ -64,11 +64,11 @@ Five classic classification algorithms were trained on the same train/test split
 
 | ML Model Name | Accuracy | AUC | Precision | Recall | F1 | MCC |
 |---|---|---|---|---|---|---|
-| Logistic Regression | 0.7613 | 0.8812 | 0.7126 | 0.6856 | 0.6950 | 0.6046 |
+| Logistic Regression | 0.7613 | 0.8812 | 0.7122 | 0.6856 | 0.6949 | 0.6046 |
 | Decision Tree | 0.7306 | 0.8203 | 0.6734 | 0.6538 | 0.6606 | 0.5547 |
 | K-Nearest Neighbors | 0.6899 | 0.8202 | 0.6415 | 0.5841 | 0.5943 | 0.4814 |
-| Gaussian Naive Bayes | 0.6763 | 0.8317 | 0.6283 | 0.6419 | 0.6333 | 0.4897 |
-| Random Forest (Ensemble) | 0.7595 | 0.8823 | 0.7200 | 0.6511 | 0.6591 | 0.6005 |
+| Gaussian Naive Bayes | 0.6763 | 0.8340 | 0.6503 | 0.6554 | 0.6409 | 0.5025 |
+| Random Forest (Ensemble) | 0.7459 | 0.8735 | 0.7129 | 0.6192 | 0.6146 | 0.5791 |
 
 *Precision, Recall, and F1 are macro-averaged across all 3 classes; AUC is one-vs-rest macro-averaged. Evaluated on the held-out test set (1,106 samples, `test_size=0.25, random_state=42`).*
 
@@ -78,10 +78,10 @@ Five classic classification algorithms were trained on the same train/test split
 |---|---|
 | Logistic Regression | Highest accuracy (0.7613) and F1 (0.6950) of all five models. The linear decision boundary works well here because, after standardisation and one-hot expansion, the Dropout and Graduate classes are broadly separable in feature space — particularly along the curricular-unit grade and approval-rate axes. The Enrolled class, which sits ambiguously between the other two outcomes, is the main source of misclassification. Coefficient magnitudes also provide direct interpretability: tuition fees up to date and 2nd-semester approved units emerge as the strongest predictors. |
 | Decision Tree | Second-lowest AUC (0.8203). The single tree's recursive splits can capture non-linear feature interactions (e.g. age × scholarship status), but depth-capping at `max_depth=8` to prevent overfitting leaves some boundary complexity unexplored. Without ensemble averaging, predictions near split thresholds are noisy, resulting in a meaningful accuracy gap (0.7306) vs. Logistic Regression — despite both models sharing identical preprocessing. |
-| K-Nearest Neighbors | Weakest accuracy (0.6899) and F1 (0.5943). One-hot encoding the 24 nominal columns inflates the feature space, diluting Euclidean distances between samples — the classic curse of dimensionality for kNN. The Enrolled minority class suffers most, pulling macro recall down to 0.5841. With `k=15`, the model is also forced to average across many potentially dissimilar neighbours in this high-dimensional space. |
-| Gaussian Naive Bayes | Third-best AUC (0.8317) but lowest accuracy (0.6763) and F1 (0.6333). Gaussian Naive Bayes assumes each feature follows a class-conditional Gaussian distribution. With `var_smoothing=1e-2` a fraction of the largest feature variance is added to all per-class variances, preventing near-zero variance on low-variance integer columns. The independence assumption is only approximately satisfied — several curricular-unit features are correlated — but the calibrated probability estimates still produce a useful AUC ahead of KNN. |
-| Random Forest (Ensemble) | Highest AUC (0.8823), but only by a 0.0011 margin over Logistic Regression — essentially a tie in ranking quality. Averaging across 300 trees eliminates the single Decision Tree's split-boundary noise, and random feature subsampling at each node handles the collinear semester columns better than a single greedy split. However, it trails Logistic Regression on accuracy (0.7595 vs 0.7613), recall, F1 (0.6591 vs 0.6950), and MCC (0.6005 vs 0.6046), so the AUC edge does not translate into better hard classifications. |
-| Overall Winner for your dataset? | **Logistic Regression** — it leads on 4 of 6 metrics (accuracy, recall, F1, and MCC), including MCC (0.6046 vs 0.6005), the metric most robust to class imbalance and generally recommended for multi-class problems like this one. Random Forest's only advantages are AUC and precision, both by margins under 0.01, so they don't outweigh Logistic Regression's broader lead in actual classification performance. Random Forest remains the better choice specifically if the deployment goal is ranking students by risk probability (e.g. a triage/priority list) rather than producing hard labels, since AUC measures ranking quality independent of a decision threshold. |
+| K-Nearest Neighbors | Weakest F1 (0.5943) of all five models, and second-weakest accuracy (0.6899) — Gaussian Naive Bayes has the single lowest accuracy at 0.6763. One-hot encoding the 24 nominal columns inflates the feature space, diluting Euclidean distances between samples — the classic curse of dimensionality for kNN. The Enrolled minority class suffers most, pulling macro recall down to 0.5841. With `k=15`, the model is also forced to average across many potentially dissimilar neighbours in this high-dimensional space. |
+| Gaussian Naive Bayes | Third-best AUC (0.8340) and the lowest accuracy (0.6763) of all five models. Gaussian Naive Bayes assumes each feature follows a class-conditional Gaussian distribution. With `var_smoothing=1e-2` a fraction of the largest feature variance is added to all per-class variances, preventing near-zero variance on low-variance integer columns. The independence assumption is only approximately satisfied — several curricular-unit features are correlated — but the calibrated probability estimates still produce a useful AUC, and its F1 (0.6409) actually edges out both Random Forest (0.6146) and KNN (0.5943). |
+| Random Forest (Ensemble) | Deliberately bounded to `n_estimators=150, max_depth=12, min_samples_leaf=5` (down from an initial unbounded 300-tree configuration) after the larger forest produced a 22.8 MB pickle that triggered `MemoryError` crashes on Streamlit Community Cloud's free-tier container. This trades some predictive performance for deployability: accuracy drops to 0.7459 and AUC to 0.8735 — both now behind Logistic Regression — though Random Forest keeps a narrow precision edge (0.7129 vs 0.7122). Random feature subsampling still handles the collinear semester-grade columns better than a single greedy split, but with fewer, shallower trees the ensemble's variance-reduction benefit is smaller than an unconstrained forest would give. |
+| Overall Winner for your dataset? | **Logistic Regression** — it now leads on 5 of 6 metrics (accuracy, AUC, recall, F1, and MCC), including MCC (0.6046), the metric most robust to class imbalance and generally recommended for multi-class problems like this one. Random Forest's only remaining edge is precision, by a margin of 0.0007 — well within noise. This gap widened after Random Forest's tree count and depth were deliberately constrained to keep the deployed pickle small enough for Streamlit Community Cloud's memory limit (see observation above); an unconstrained forest would likely have stayed closer to Logistic Regression, but the smaller, deployable configuration is what's actually running in production, and that is the fair basis for comparison. |
 
 ---
 
