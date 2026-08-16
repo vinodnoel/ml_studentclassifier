@@ -720,30 +720,31 @@ else:
         if not has_target:
             st.info('Upload a dataset with the target column to enable model comparison.')
         else:
-            _run_compare = st.button('Re-run comparison', key='compare_btn') or 'compare_results' not in st.session_state
-            if _run_compare:
-                _nom = [c for c in schema.get('nominal_columns', []) if c in df.columns]
-                _num = [c for c in raw_feature_columns if c in df.columns and c not in _nom]
+            @st.cache_data(show_spinner='Training 5 models on the current dataset…')
+            def _compare_all_models(X_in: pd.DataFrame, y_in: pd.Series, nom_in: list, num_in: list):
+                # NOTE: these params must NOT start with "_" — Streamlit's cache_data
+                # skips hashing any argument whose name starts with an underscore,
+                # which would make this cache blind to the actual data and always
+                # return whichever result was computed first (stale results on
+                # every subsequent dataset, including uploaded CSVs).
                 _pre = _CT([
-                    ('num', _SKP([('imp', _SI(strategy='median')), ('sc', _SS())]), _num),
-                    ('cat', _SKP([('imp', _SI(strategy='most_frequent')), ('ohe', _OHE(handle_unknown='ignore', sparse_output=False))]), _nom),
+                    ('num', _SKP([('imp', _SI(strategy='median')), ('sc', _SS())]), num_in),
+                    ('cat', _SKP([('imp', _SI(strategy='most_frequent')), ('ohe', _OHE(handle_unknown='ignore', sparse_output=False))]), nom_in),
                 ], remainder='drop')
                 _estimators = {
                     'Logistic Regression': _LR(max_iter=2000, random_state=42),
                     'Decision Tree':       _DT(max_depth=8, min_samples_leaf=10, random_state=42),
                     'K-Nearest Neighbors': _KNN(n_neighbors=15),
                     'Gaussian Naive Bayes': _GNB(var_smoothing=1e-2),
-                    'Random Forest':       _RF(n_estimators=150, max_depth=12, min_samples_leaf=5, random_state=42, n_jobs=-1),
+                    # n_jobs=1: Streamlit Community Cloud free tier is single-core, so
+                    # multiprocessing (n_jobs=-1) only adds process-spawn overhead here.
+                    'Random Forest':       _RF(n_estimators=150, max_depth=12, min_samples_leaf=5, random_state=42, n_jobs=1),
                 }
-                _X = df[raw_feature_columns].copy()
-                _y = df[target_col]
-                _min_class = _y.value_counts().min()
-                _stratify = _y if _min_class >= 2 else None
-                _Xtr, _Xte, _ytr, _yte = _tts(_X, _y, test_size=0.2, random_state=42, stratify=_stratify)
-                _compare_rows = []
-                _progress = st.progress(0, text='Training models…')
-                for _idx, (_name, _est) in enumerate(_estimators.items()):
-                    _progress.progress((_idx) / 5, text=f'Training {_name}…')
+                _min_class = y_in.value_counts().min()
+                _stratify = y_in if _min_class >= 2 else None
+                _Xtr, _Xte, _ytr, _yte = _tts(X_in, y_in, test_size=0.2, random_state=42, stratify=_stratify)
+                _out_rows = []
+                for _name, _est in _estimators.items():
                     try:
                         _clf = _SKP([('pre', _pre), ('est', _est)])
                         _clf.fit(_Xtr, _ytr)
@@ -757,7 +758,7 @@ else:
                             _ypb if _ypb is not None else np.zeros((len(_yp), len(_clf.classes_))),
                             classes=_clf.classes_,
                         )
-                        _compare_rows.append({
+                        _out_rows.append({
                             'Model': _name,
                             'Accuracy': round(_m['accuracy'], 4),
                             'Precision': round(_m['precision'], 4),
@@ -767,12 +768,52 @@ else:
                             'AUC': round(_m['auc'], 4) if _m['auc'] is not None else None,
                         })
                     except Exception as _e:
-                        _compare_rows.append({'Model': _name, 'error': str(_e)})
-                _progress.progress(1.0, text='Done.')
-                st.session_state['compare_results'] = _compare_rows
+                        _out_rows.append({'Model': _name, 'error': str(_e)})
+                return _out_rows
 
-            if 'compare_results' in st.session_state:
-                _rows = st.session_state['compare_results']
+            _nom = [c for c in schema.get('nominal_columns', []) if c in df.columns]
+            _num = [c for c in raw_feature_columns if c in df.columns and c not in _nom]
+
+            # Pre-computed comparison for the default dataset — same code path as the
+            # live trainer below, run once offline (see model/generate_comparison_metrics.py)
+            # so this tab never shows a blank/slow screen for the default dataset.
+            _precomputed_path = MODEL_DIR / 'comparison_metrics.json'
+            _using_default_data = (_data_source == 'Preloaded Data')
+
+            _force_live = st.button(
+                '🔁 Re-run live on current data' if _using_default_data else 'Train & compare on uploaded data',
+                key='compare_btn',
+            )
+
+            _rows = None
+
+            if _using_default_data:
+                if not _force_live and _precomputed_path.exists():
+                    _rows = json.loads(_precomputed_path.read_text(encoding='utf8'))
+                    st.caption(
+                        '📋 Showing pre-computed results (identical code, same default dataset and split) — '
+                        'no retraining needed. Click **Re-run live** to retrain in the browser and confirm the '
+                        'numbers reproduce.'
+                    )
+                else:
+                    if _force_live:
+                        _compare_all_models.clear()
+                    _rows = _compare_all_models(df[raw_feature_columns].copy(), df[target_col], _nom, _num)
+            else:
+                # Uploaded data: never auto-train. Wait for an explicit click, then
+                # remember it for this specific file so later reruns (e.g. changing
+                # the "Metric to chart" dropdown below) don't lose the results and
+                # silently fall back to the info message.
+                _upload_id = (getattr(uploaded, 'name', None), getattr(uploaded, 'size', None))
+                if _force_live and _upload_id[0] is not None:
+                    st.session_state['compare_upload_id'] = _upload_id
+                if _upload_id[0] is not None and st.session_state.get('compare_upload_id') == _upload_id:
+                    _rows = _compare_all_models(df[raw_feature_columns].copy(), df[target_col], _nom, _num)
+                    st.caption('🧪 Trained live on your uploaded data (cached — instant for repeat visits with this file).')
+                else:
+                    st.info('Click **Train & compare on uploaded data** above to run the comparison on your uploaded file.')
+
+            if _rows is not None:
                 _cdf = pd.DataFrame([r for r in _rows if 'error' not in r])
                 if _cdf.empty:
                     st.error('All models failed to train.')
@@ -801,15 +842,15 @@ else:
                     st.pyplot(fig_cmp)
                     plt.close(fig_cmp)
 
-                    # Summary table
-                    _display_cols = ['Model'] + _available
-                    st.dataframe(
-                        _cdf[_display_cols].style
-                            .highlight_max(subset=_available, axis=0, color='#c8e6c9')
-                            .format({c: '{:.4f}' for c in _available}),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                # Summary table
+                _display_cols = ['Model'] + _available
+                st.dataframe(
+                    _cdf[_display_cols].style
+                        .highlight_max(subset=_available, axis=0, color='#c8e6c9')
+                        .format({c: '{:.4f}' for c in _available}),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
     # Diagnostics tab
     with tabs[3]:
