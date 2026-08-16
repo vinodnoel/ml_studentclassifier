@@ -811,7 +811,13 @@ else:
                     _rows = _compare_all_models(df[raw_feature_columns].copy(), df[target_col], _nom, _num)
                     st.caption('🧪 Trained live on your uploaded data (cached — instant for repeat visits with this file).')
                 else:
-                    st.info('Click **Train & compare on uploaded data** above to run the comparison on your uploaded file.')
+                    st.info(
+                        '**Steps to compare models on your own data:**\n\n'
+                        '1. Select **Upload Own** in the *Data Source* panel on the left.\n'
+                        '2. Upload your CSV file there.\n'
+                        '3. Come back to this **Model Comparison** tab and click '
+                        '**Train & compare on uploaded data** above.'
+                    )
 
             if _rows is not None:
                 _cdf = pd.DataFrame([r for r in _rows if 'error' not in r])
